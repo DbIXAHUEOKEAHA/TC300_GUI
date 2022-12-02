@@ -57,12 +57,12 @@ class TC300_settings(tk.Frame):
                                         command=self.button_target1_clicked)
         button_set_target1.place(relx=0.6, rely=0.6)
         
-        '''
+        
         self.value_t1 = tk.StringVar(value='20.0')
         self.label_value_t1 = tk.Label(self, text=(
             '\n' + self.value_t1.get()), font=('Arial', 16))
         self.label_value_t1.place(relx=0.15, rely=0.3)
-        '''
+        
 
         #python is one-threaded by default, so to make it multi-threaded we need to implement some new features with 'threading' library
         #############################################

@@ -11,7 +11,7 @@ import numpy as np
 import time
 from datetime import datetime
 
-filename = cur_dir + '\TC300_Config\TC300' + datetime.today().strftime(
+filename = cur_dir + '\Config\TC300' + datetime.today().strftime(
     '%H_%M_%d_%m_%Y') + '.csv'
 
 config_parameters = pd.DataFrame(columns=['Time', 'Target temperature', 'Current CH1', 'Voltage CH1', 'Current CH2', 'Voltage CH2'])
@@ -320,16 +320,11 @@ class TC300_GUI(tk.Frame):
         time.sleep(0.025)
     
     def display1(self):
-        if(self.x.get()==1):
-            print("CH1 on")
-        else:
-            print("CH1 off")
+        TC300().set_ch1(self.x.get())
+            
             
     def display2(self):
-        if(self.y.get()==1):
-            print("CH2 on")
-        else:
-            print("CH2 off")
+        TC300().set_ch2(self.y.get())
         
 def main():
     write_config_parameters()

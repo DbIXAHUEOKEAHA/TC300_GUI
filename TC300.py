@@ -30,6 +30,14 @@ class TC300():
         
     def IDN(self):
         return(get(self.tc, 'IDN?')[2:])
+    
+    def set_ch1(self, value):
+        #Set Channel 1 status (0=Disable; 1=Enable).
+        self.tc.write('EN1=' + str(value))
+        
+    def set_ch2(self, value):
+        #Set Channel 2 status (0=Disable; 1=Enable).
+        self.tc.write('EN2=' + str(value))
 
     def T1(self):
         # Get the CH1 target temperature; returned value is the actual temperature in °C
@@ -189,5 +197,5 @@ class TC300():
             value = value[2::]
         return(value)
 
-
+TC300().set_ch1(1)
     

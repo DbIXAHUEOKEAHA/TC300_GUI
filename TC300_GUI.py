@@ -11,7 +11,7 @@ import numpy as np
 import time
 from datetime import datetime
 
-filename = cur_dir + '\config\TC300' + datetime.today().strftime(
+filename = cur_dir + '\TC300_Config\TC300' + datetime.today().strftime(
     '%H_%M_%d_%m_%Y') + '.csv'
 
 config_parameters = pd.DataFrame(columns=['Time', 'Target temperature', 'Current CH1', 'Voltage CH1', 'Current CH2', 'Voltage CH2'])
@@ -28,6 +28,18 @@ sensor1 = sensor_dict[TC300().type1()]
 time.sleep(0.025)
 
 sensor2 = sensor_dict[TC300().type2()]
+
+time.sleep(0.025)
+
+P = TC300().PID_P()
+
+time.sleep(0.025)
+
+I = TC300().PID_I()
+
+time.sleep(0.025)
+
+D = TC300().PID_D()
 
 time.sleep(0.025)
 
@@ -119,7 +131,7 @@ class TC300_GUI(tk.Frame):
 
 
         button_start = tk.Button(self,
-                           text="start",font=("Times New Romen",10,'bold'),
+                           text="Set",font=("Times New Romen",10,'bold'),
                            command=self.click,
                            width=6,height=2,
                            bg="light gray",fg="black",
@@ -133,12 +145,13 @@ class TC300_GUI(tk.Frame):
 
         label_target_temperature = tk.Label(self,
                            text="Target Temperature",font=("Arial",15,'bold'))
-        entry1 = tk.Entry(self,
+        self.entry_target = tk.Entry(self,
                           font=("Arial",12))
+        self.entry_target.insert(0, '50')
         label_target_temperature.pack()
-        entry1.pack()
+        self.entry_target.pack()
         label_target_temperature.place(x=200, y=70)
-        entry1.place(x=450, y=70)
+        self.entry_target.place(x=450, y=70)
         label_degree1 = tk.Label(self,text="\N{DEGREE CELSIUS}",font=("Arial",10,'bold'))
         label_degree1.pack()
         label_degree1.place(x=680,y=74)
@@ -154,37 +167,38 @@ class TC300_GUI(tk.Frame):
         label_CH2.place(x=550, y=180)
         #Channel 1&2
 
-
-
         label_P = tk.Label(self,
                            text="P",font=("Arial",15,'bold'))
-        entry3 = tk.Entry(self,
+        self.entry_P = tk.Entry(self,
                           font=("Arial",12),
                           width=6)
+        self.entry_P.insert(0, P)
         label_P.pack()
-        entry3.pack()
+        self.entry_P.pack()
         label_P.place(x=320, y=130)
-        entry3.place(x=345, y=135)
+        self.entry_P.place(x=345, y=135)
 
         label_I = tk.Label(self,
                            text="I",font=("Arial",15,'bold'))
-        entry4 = tk.Entry(self,
+        self.entry_I = tk.Entry(self,
                           font=("Arial",12),
                           width=6)
+        self.entry_I.insert(0, I)
         label_I.pack()
-        entry4.pack()
+        self.entry_I.pack()
         label_I.place(x=450, y=130)
-        entry4.place(x=475, y=135)
+        self.entry_I.place(x=475, y=135)
 
         label_D = tk.Label(self,
                            text="D",font=("Arial",15,'bold'))
-        entry5 = tk.Entry(self,
+        self.entry_D = tk.Entry(self,
                           font=("Arial",12),
                           width=6)
+        self.entry_D.insert(0, D)
         label_D.pack()
-        entry5.pack()
+        self.entry_D.pack()
         label_D.place(x=580, y=130)
-        entry5.place(x=605, y=135)
+        self.entry_D.place(x=605, y=135)
 
 
         label_PID = tk.Label(self,
@@ -234,7 +248,7 @@ class TC300_GUI(tk.Frame):
         modechosen1 = ttk.Combobox(self, width = 15)
         modechosen1['values'] = (' Heater', 
                                   ' Constant Current')
-        modechosen1.set('')
+        modechosen1.current(0)
         modechosen1.pack()
         modechosen1.place(x=310,y=185)
           
@@ -248,7 +262,7 @@ class TC300_GUI(tk.Frame):
         modechosen2 = ttk.Combobox(self, width = 15)
         modechosen2['values'] = (' Heater', 
                                   ' Constant Current')
-        modechosen2.set('')
+        modechosen1.current(1)
         modechosen2.pack()
         modechosen2.place(x=760,y=185)
         #Modechosen combobox
@@ -296,10 +310,14 @@ class TC300_GUI(tk.Frame):
             self.table_dataframe.after(500, self.update_item, item)
     
     def click(self):
-        print("Begin heating")
-    
-    def get_random(self):
-        return round(np.random.random(1)[0], 2)
+        TC300().set_T1(value = float(self.entry_target.get()))
+        time.sleep(0.025)
+        TC300().set_PID_P(value = float(self.entry_P.get()))
+        time.sleep(0.025)
+        TC300().set_PID_I(value = float(self.entry_I.get()))
+        time.sleep(0.025)
+        TC300().set_PID_D(value = float(self.entry_D.get()))
+        time.sleep(0.025)
     
     def display1(self):
         if(self.x.get()==1):

@@ -351,7 +351,15 @@ class TC300_GUI(tk.Frame):
         
         self.plot1 = FigureCanvasTkAgg(globals()['fig1'], self)
         self.plot1.draw()
-        globals()[f'self.plot{self.order}'].get_tk_widget().place(relx=0, rely=0)
+        self.plot1.get_tk_widget().place(x = 1000, rely=0)
+        
+        self.plot2 = FigureCanvasTkAgg(globals()['fig2'], self)
+        self.plot2.draw()
+        self.plot2.get_tk_widget().place(x = 100, rely=500)
+        
+        self.plot3 = FigureCanvasTkAgg(globals()['fig3'], self)
+        self.plot3.draw()
+        self.plot3.get_tk_widget().place(x = 1000, rely=500)
         
     def update_item(self, item):
         my_animate()

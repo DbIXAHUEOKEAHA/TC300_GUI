@@ -50,8 +50,11 @@ D = TC300().PID_D()
 
 time.sleep(0.025)
 
+t0 = 0
+
 def my_animate(i = 0, n = 1):
     # function to animate graph on each step
+    global t0
     
     if n%3 == 1:
         color = 'darkblue'
@@ -66,28 +69,28 @@ def my_animate(i = 0, n = 1):
     data = pd.read_csv(filename)
     t = data[columns[0]].values
     y = data[columns[n]].values
+    globals()[f'ax{n}'].set_xlim((t0, np.max(t)))
+    globals()[f'ax{n}'].plot(t, y, '-', color = color, lw = 1)
+    globals()['GUI'].update()
+    globals()['GUI'].update_idletasks()
+    
     
 ax_dict = {1: 'T, °C', 2: 'I, mA', 3: 'V, V'}
     
 def create_fig(i, figsize, pad = 0, tick_size = 4, label_size = 6, x_pad =0, y_pad = 1, title_size = 8, title_pad = -5):
         globals()[f'fig{i}'] = Figure(figsize, dpi=300)
         globals()[f'ax{i}'] = globals()[f'fig{i}'].add_subplot(111)
+        globals()[f'ax{i}'].autoscale(enable = False, axis = 'x')
         globals()[f'ax{i}'].set_xlabel('t, s')
         globals()[f'ax{i}'].set_ylabel(ax_dict[i])
-        globals()[f'ani{i}'] = StartAnimation
-        globals()[f'ani{i}'].start()
+        globals()[f'ax{i}'].set_title(f'{ax_dict[i][0]}(t)')
+        globals()[f'animation{i}'] = animation.FuncAnimation(
+            fig = globals()[f'fig{i}'], func = lambda x: my_animate(x, n = i), interval=interval, blit = False)
         
 for i in range(1, 4):
     create_fig(i, figsize = (200, 100))
 
 interval = 100
-
-class StartAnimation:
-    
-    def start(i):
-        globals()[f'animation{i}'] = animation.FuncAnimation(
-            fig = globals()[f'fig{i}'], func = lambda x: my_animate(x, n = i), interval=interval, blit = False)
-
 
 class write_config_parameters(threading.Thread):
 
@@ -160,6 +163,8 @@ class TC300_GUI(tk.Frame):
     def __init__(self, parent, controller):
         '''init is the function that runs every time, when Frontend class called
         so here we should initialise all variables that we are going to use'''
+        
+        globals()['GUI'] = self
         
         self.adress = 'ASRL3::INSTR' #adress of TC300 device
 

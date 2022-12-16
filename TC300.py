@@ -1,3 +1,4 @@
+
 import re
 import numpy as np
 import pyvisa as visa
@@ -14,7 +15,7 @@ def get(device, command):
 
 class TC300():
 
-    def __init__(self, adress='ASRL3::INSTR'):
+    def __init__(self, adress='ASRL4::INSTR'):
         
         self.tc = rm.open_resource(adress, baud_rate=115200,
                                    data_bits=8, parity=constants.VI_ASRL_PAR_NONE,
@@ -198,4 +199,3 @@ class TC300():
         return(value)
 
 TC300().set_ch1(1)
-    

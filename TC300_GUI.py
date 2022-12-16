@@ -11,7 +11,7 @@ import numpy as np
 import time
 from datetime import datetime
 
-filename = cur_dir + '\Config\TC300' + datetime.today().strftime(
+filename = cur_dir + '\TC300_Config\TC300' + datetime.today().strftime(
     '%H_%M_%d_%m_%Y') + '.csv'
 
 config_parameters = pd.DataFrame(columns=['Time', 'Target temperature', 'Current CH1', 'Voltage CH1', 'Current CH2', 'Voltage CH2'])

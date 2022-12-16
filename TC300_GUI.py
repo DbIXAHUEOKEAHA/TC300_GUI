@@ -10,11 +10,18 @@ import threading
 import numpy as np
 import time
 from datetime import datetime
+import matplotlib.animation as animation
+#import blit_animation
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, 
+                                               NavigationToolbar2Tk)
+import matplotlib.pyplot as plt
+from matplotlib import style
 
 filename = cur_dir + '\TC300_Config\TC300' + datetime.today().strftime(
     '%H_%M_%d_%m_%Y') + '.csv'
 
-config_parameters = pd.DataFrame(columns=['Time', 'Target temperature', 'Current CH1', 'Voltage CH1', 'Current CH2', 'Voltage CH2'])
+config_parameters = pd.DataFrame(columns=['Time', 'Actual temperature', 'Current CH1', 'Voltage CH1', 'Current CH2', 'Voltage CH2'])
 
 config_parameters.to_csv(filename, index=False)
 
@@ -42,6 +49,45 @@ time.sleep(0.025)
 D = TC300().PID_D()
 
 time.sleep(0.025)
+
+def my_animate(i = 0, n = 1):
+    # function to animate graph on each step
+    
+    if n%3 == 1:
+        color = 'darkblue'
+    elif n%3 == 2:
+        color = 'darkgreen'
+    elif n%3 == 0:
+        color = 'crimson'
+    else:
+        color = 'black'
+
+    columns = pd.read_csv(filename).columns.values
+    data = pd.read_csv(filename)
+    t = data[columns[0]].values
+    y = data[columns[n]].values
+    
+ax_dict = {1: 'T, °C', 2: 'I, mA', 3: 'V, V'}
+    
+def create_fig(i, figsize, pad = 0, tick_size = 4, label_size = 6, x_pad =0, y_pad = 1, title_size = 8, title_pad = -5):
+        globals()[f'fig{i}'] = Figure(figsize, dpi=300)
+        globals()[f'ax{i}'] = globals()[f'fig{i}'].add_subplot(111)
+        globals()[f'ax{i}'].set_xlabel('t, s')
+        globals()[f'ax{i}'].set_ylabel(ax_dict[i])
+        globals()[f'ani{i}'] = StartAnimation
+        globals()[f'ani{i}'].start()
+        
+for i in range(1, 4):
+    create_fig(i, figsize = (200, 100))
+
+interval = 100
+
+class StartAnimation:
+    
+    def start(i):
+        globals()[f'animation{i}'] = animation.FuncAnimation(
+            fig = globals()[f'fig{i}'], func = lambda x: my_animate(x, n = i), interval=interval, blit = False)
+
 
 class write_config_parameters(threading.Thread):
 
@@ -245,12 +291,13 @@ class TC300_GUI(tk.Frame):
         label_mode1.pack()
         label_mode1.place(x=260, y=185)
 
-        modechosen1 = ttk.Combobox(self, width = 15)
-        modechosen1['values'] = (' Heater', 
+        self.modechosen1 = ttk.Combobox(self, width = 15)
+        self.modechosen1['values'] = (' Heater', 
                                   ' Constant Current')
-        modechosen1.current(0)
-        modechosen1.pack()
-        modechosen1.place(x=310,y=185)
+        self.modechosen1.bind("<<ComboboxSelected>>", self.set_op_mode1)
+        self.modechosen1.current(0)
+        self.modechosen1.pack()
+        self.modechosen1.place(x=310,y=185)
           
 
 
@@ -259,12 +306,13 @@ class TC300_GUI(tk.Frame):
         label_mode2.pack()
         label_mode2.place(x=710, y=185)
 
-        modechosen2 = ttk.Combobox(self, width = 15)
-        modechosen2['values'] = (' Heater', 
+        self.modechosen2 = ttk.Combobox(self, width = 15)
+        self.modechosen2['values'] = (' Heater', 
                                   ' Constant Current')
-        modechosen1.current(1)
-        modechosen2.pack()
-        modechosen2.place(x=760,y=185)
+        self.modechosen2.bind("<<ComboboxSelected>>", self.set_op_mode2)
+        self.modechosen2.current(1)
+        self.modechosen2.pack()
+        self.modechosen2.place(x=760,y=185)
         #Modechosen combobox
 
         label_sensortype1 = tk.Label(self,
@@ -301,7 +349,12 @@ class TC300_GUI(tk.Frame):
         
         self.update_item('Current dataframe')
         
+        self.plot1 = FigureCanvasTkAgg(globals()['fig1'], self)
+        self.plot1.draw()
+        globals()[f'self.plot{self.order}'].get_tk_widget().place(relx=0, rely=0)
+        
     def update_item(self, item):
+        my_animate()
         try:
             dataframe = pd.read_csv(filename).tail(1).values.flatten().round(2)
             self.table_dataframe.item(item, values=tuple(dataframe))
@@ -311,6 +364,8 @@ class TC300_GUI(tk.Frame):
     
     def click(self):
         TC300().set_T1(value = float(self.entry_target.get()))
+        time.sleep(0.025)
+        TC300().set_CURR2(value = 58.073 + 2.185*float(self.entry_target.get()))
         time.sleep(0.025)
         TC300().set_PID_P(value = float(self.entry_P.get()))
         time.sleep(0.025)
@@ -325,6 +380,18 @@ class TC300_GUI(tk.Frame):
             
     def display2(self):
         TC300().set_ch2(self.y.get())
+        
+    def set_op_mode1(self, event):
+        if self.modechosen1.current() == 0:
+            TC300().set_op_mode1(0)
+        if self.modechosen1.current() == 1:
+            TC300().set_op_mode1(2)
+            
+    def set_op_mode2(self, event):
+        if self.modechosen2.current() == 0:
+            TC300().set_op_mode2(0)
+        if self.modechosen2.current() == 1:
+            TC300().set_op_mode2(2)
         
 def main():
     write_config_parameters()

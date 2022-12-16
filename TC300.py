@@ -1,4 +1,3 @@
-
 import re
 import numpy as np
 import pyvisa as visa
@@ -28,6 +27,8 @@ class TC300():
         self.set_options = {'T1', 'T2', 'VMAX1', 'VMAX2', 'CURR1', 'CURR2'}
 
         self.get_options = {'T1', 'T2', 'VOLT1', 'VOLT2', 'CURR1', 'CURR2'}
+        
+        self.operation_mode_dict = {'0 ': 'Heater', '1 ': ' ', '2 ': 'Current'}
         
     def IDN(self):
         return(get(self.tc, 'IDN?')[2:])
@@ -198,4 +199,27 @@ class TC300():
             value = value[2::]
         return(value)
 
-TC300().set_ch1(1)
+    def op_mode1(self):
+        #Get CH1 operation mode
+        value = get(self.tc, 'MOD1?')
+        if value.startswith('\n'):
+            value = value[2::]
+        return(self.operation_mode_dict[value])
+    
+    def op_mode2(self):
+        #Get CH1 operation mode
+        value = get(self.tc, 'MOD2?')
+        if value.startswith('\n'):
+            value = value[2::]
+        return(self.operation_mode_dict[value])
+    
+    def set_op_mode1(self, value):
+        #Get CH1 operation mode
+        self.tc.write('MOD1=' + str(value))
+    
+    def set_op_mode2(self, value):
+        #Get CH1 operation mode
+        value = get(self.tc, 'MOD2?')
+        if value.startswith('\n'):
+            value = value[2::]
+        return(self.operation_mode_dict[value])

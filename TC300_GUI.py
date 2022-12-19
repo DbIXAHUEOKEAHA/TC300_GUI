@@ -42,7 +42,26 @@ D = TC300().PID_D()
 
 t0 = 0
 
-commans = ''
+func_to_run = ''
+
+def set_default():
+    TC300().set_T1(value = float(globals()['GUI'].entry_target.get()))
+    TC300().set_CURR2(value = 58.073 + 2.185*float(globals()['GUI'].entry_target.get()))
+    TC300().set_PID_P(value = float(globals()['GUI'].entry_P.get()))
+    TC300().set_PID_I(value = float(globals()['GUI'].entry_I.get()))
+    TC300().set_PID_D(value = float(globals()['GUI'].entry_D.get()))
+
+def set_ch1():
+    TC300().set_ch1(globals()['GUI'].x.get())
+    
+def set_ch2():
+    TC300().set_ch2(globals()['GUI'].y.get())
+    
+def set_op_mode1():
+    TC300().set_op_mode1((int * globals()['GUI'].modechosen1.current() * 2))
+
+def set_op_mode2():
+    TC300().set_op_mode2((int * globals()['GUI'].modechosen2.current() * 2))
 
 def my_animate(i = 0, n = 1):
     # function to animate graph on each step
@@ -60,16 +79,15 @@ def my_animate(i = 0, n = 1):
     data = pd.read_csv(filename)
     t = data[columns[0]].values
     if len(t) == 0:
-        t = [0]
+        t = []
     y = data[columns[n]].values
     if len(y) == 0:
-        y = [0]
-    print(f't = {t}\ny = {y}')
+        y = []
     #globals()[f'ax{n}'].set_xlim((t0, np.max(t)))
     globals()[f'ax{n}'].plot(t, y, '-', color = color, lw = 1)
     globals()['GUI'].update()
     globals()['GUI'].update_idletasks()
-    return [globals()[f'ax{n}']]
+    #return [globals()[f'ax{n}']]
     
     
 ax_dict = {1: 'T, °C', 2: 'I, mA', 3: 'V, V'}
@@ -79,7 +97,7 @@ interval = 100
 def create_fig(i, figsize, pad = 0, tick_size = 4, label_size = 6, x_pad =0, y_pad = 1, title_size = 8, title_pad = -5):
         globals()[f'fig{i}'] = Figure(figsize, dpi=300)
         globals()[f'ax{i}'] = globals()[f'fig{i}'].add_subplot(111)
-        globals()[f'ax{i}'].autoscale(enable = False, axis = 'x')
+        #globals()[f'ax{i}'].autoscale(enable = False, axis = 'x')
         globals()[f'ax{i}'].set_xlabel('t, s')
         globals()[f'ax{i}'].set_ylabel(ax_dict[i])
         globals()[f'ax{i}'].set_title(f'{ax_dict[i][0]}(t)', fontsize = 8)
@@ -96,7 +114,7 @@ class write_config_parameters(threading.Thread):
 
     def run(self):
         
-        global command
+        global func_to_run
         
         while True:
             dataframe = [round(time.perf_counter() - zero_time, 2)]
@@ -106,9 +124,9 @@ class write_config_parameters(threading.Thread):
             dataframe.append(TC300().CURR2())
             dataframe.append(TC300().VOLT2())
             
-            exec(command)
+            exec(func_to_run)
             
-            command = ''
+            func_to_run = ''
             
             with open(filename, 'a') as f_object:
                 try:
@@ -153,16 +171,16 @@ class Frontend(tk.Tk):
         self.show_frame(window) #refer to show_frame function below
 
     def show_frame(self, cont):
+        global GUI
         frame = self.frames[cont]
         frame.tkraise() #create window
+        GUI = frame
 
 class TC300_GUI(tk.Frame):
 
     def __init__(self, parent, controller):
         '''init is the function that runs every time, when Frontend class called
         so here we should initialise all variables that we are going to use'''
-        
-        globals()['GUI'] = self
         
         self.adress = 'ASRL3::INSTR' #adress of TC300 device
 
@@ -373,37 +391,24 @@ class TC300_GUI(tk.Frame):
             self.table_dataframe.after(500, self.update_item, item)
     
     def click(self):
-        global command
-        command = 'TC300().set_T1(value = float(globals()["GUI"].entry_target.get()))\n\
-            TC300().set_CURR2(value = 58.073 + 2.185*float(globals()["GUI"].entry_target.get()))\n\
-            TC300().set_PID_P(value = float(globals()["GUI"].entry_P.get()))\n\
-            TC300().set_PID_I(value = float(globals()["GUI"].entry_I.get()))\n\
-            TC300().set_PID_D(value = float(globals()["GUI"].entry_D.get()))'
-    
+        global func_to_run
+        func_to_run = 'set_default()'
+        
     def display1(self):
-        global command
-        command = 'TC300().set_ch1(globals()["GUI"].x.get())'
-            
+        global func_to_run
+        func_to_run = 'set_ch1()'
             
     def display2(self):
-        global command
-        command = 'TC300().set_ch2(globals()["GUI"].y.get())'
+        global func_to_run
+        func_to_run = 'set_ch2()'
         
     def set_op_mode1(self, event):
-        global command
-        
-        if self.modechosen1.current() == 0:
-            command = 'TC300().set_op_mode1(0)'
-        if self.modechosen1.current() == 1:
-            command = 'TC300().set_op_mode1(2)'
-            
+        global func_to_run
+        func_to_run = 'set_op_mode1()'
+
     def set_op_mode2(self, event):
-        global command 
-        
-        if self.modechosen2.current() == 0:
-            command = 'TC300().set_op_mode2(0)'
-        if self.modechosen2.current() == 1:
-            command = 'TC300().set_op_mode2(2)'
+        global func_to_run
+        func_to_run = 'set_op_mode2()'
         
 def main():
     write_config_parameters()

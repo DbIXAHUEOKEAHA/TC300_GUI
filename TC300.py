@@ -13,7 +13,7 @@ def get(device, command):
 
 class TC300():
 
-    def __init__(self, adress='ASRL3::INSTR'):
+    def __init__(self, adress='ASRL4::INSTR'):
         
         self.adress = adress
         
@@ -120,8 +120,8 @@ class TC300():
     def set_T1(self, value=20):
         # Set the CH1 target temperature to value °C, the range is defined by
         # TMIN1 and TMAX1, the setting resolution of value is 1.
-        #self.tc.write('EN1=1')
         self.tc.write('TSET1=' + str(int(value * 10)))
+        print(f'T1 set to {value}')
         self.close()
 
     def set_T1_MIN(self, t1_from=0):
@@ -253,3 +253,4 @@ class TC300():
     
     def close(self):
         self.tc.close()
+        

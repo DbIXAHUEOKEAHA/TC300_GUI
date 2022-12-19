@@ -13,7 +13,7 @@ def get(device, command):
 
 class TC300():
 
-    def __init__(self, adress='ASRL4::INSTR'):
+    def __init__(self, adress='ASRL3::INSTR'):
         
         self.adress = adress
         
@@ -35,29 +35,27 @@ class TC300():
                                    write_termination='\r', read_termination='\r')
     
     def IDN(self):
-        value = get(self.tc, 'IDN?')
-        self.close()
-        if value.startswith('\n'):
-            value = value[2::]
-        return(value)
+        return(get(self.tc, 'IDN?')[2:])
     
     def set_ch1(self, value):
         #Set Channel 1 status (0=Disable; 1=Enable).
         self.tc.write('EN1=' + str(value))
-        self.close()
         
     def set_ch2(self, value):
         #Set Channel 2 status (0=Disable; 1=Enable).
         self.tc.write('EN2=' + str(value))
-        self.close()
 
     def T1(self):
         # Get the CH1 target temperature; returned value is the actual temperature in °C
-        value = get(self.tc, 'TACT1?')
+        value_str = get(self.tc, 'TACT1?')
         self.close()
-        if value.startswith('\n'):
-            value = value[2::]
-        return(value)
+        if value_str == '':
+            self.open()
+            value_str = get(self.tc, 'TACT1?')
+            self.close()
+        value_float = re.findall(r'\d*\.\d+|\d+', value_str)
+        value_float = [float(i) for i in value_float]
+        return(value_float[0])
     
     def VOLT1(self):
         #Get the CH1 Output Voltage value, with a range of 0.1 to 24.0 V 
@@ -140,11 +138,15 @@ class TC300():
 
     def T2(self):
         # Get the CH2 target temperature; returned value is the actual temperature in °C
-        value = get(self.tc, 'TACT2?')
+        value_str = get(self.tc, 'TACT2?')
         self.close()
-        if value.startswith('\n'):
-            value = value[2::]
-        return(value)
+        if value_str == '':
+            self.open()
+            value_str = get(self.tc, 'TACT2?')
+            self.close()
+        value_float = re.findall(r'\d*\.\d+|\d+', value_str)
+        value_float = [float(i) for i in value_float]
+        return(value_float[0])
 
     def set_T2(self, value=20):
         # Set the CH2 target temperature to value °C, the range is defined by
@@ -251,6 +253,3 @@ class TC300():
     
     def close(self):
         self.tc.close()
-        
-
-        

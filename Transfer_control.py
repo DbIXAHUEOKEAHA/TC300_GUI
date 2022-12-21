@@ -53,6 +53,8 @@ def set_default():
     TC300().set_PID_P(value = float(globals()['GUI'].entry_P.get()))
     TC300().set_PID_I(value = float(globals()['GUI'].entry_I.get()))
     TC300().set_PID_D(value = float(globals()['GUI'].entry_D.get()))
+    TC300().set_ch1(1)
+    TC300().set_ch2(1)
 
 def set_ch1():
     TC300().set_ch1(globals()['GUI'].x.get())
@@ -73,6 +75,12 @@ def go_z():
 def go_theta():
     RotStage().set_speed((float(globals()['GUI'].entry_delta_theta.get())))
     RotStage().set_position((float(globals()['GUI'].entry_theta.get())))
+    
+def pause_z():
+    ZStage().stop()
+
+def pause_theta():
+    RotStage().stop()
 
 def my_animate1(i):
     # function to animate graph on each step
@@ -430,6 +438,11 @@ class TC300_GUI(tk.Frame):
         button_go_z = tk.Button(self, text = 'Go', font = ('verdana, 14'), command = self.go_z)
         button_go_z.place(x = 100, y = 500)
         
+        self.button_pause_z = tk.Button(self, text = r'⏸️', font = ('verdana', 14), command = lambda: self.pause_z())
+        self.button_pause_z.place(x = 150, y = 500)
+        
+        self.pause_z_status = 0
+        
         self.entry_theta = tk.Entry(self)
         self.entry_theta.insert(0, str(Theta_init))
         self.entry_theta.place(x = 500, y = 400)
@@ -449,6 +462,11 @@ class TC300_GUI(tk.Frame):
         
         button_go_theta = tk.Button(self, text = 'Go', font = ('verdana, 14'), command = self.go_theta)
         button_go_theta.place(x = 500, y = 500)
+        
+        self.button_pause_theta = tk.Button(self, text = r'⏸️', font = ('verdana', 14), command = lambda: self.pause_theta())
+        self.button_pause_theta.place(x = 550, y = 500)
+        
+        self.pause_theta_status = 0
         
         self.columns = pd.read_csv(filename, sep = ',').columns
         
@@ -492,6 +510,9 @@ class TC300_GUI(tk.Frame):
     def click(self):
         global func_to_run
         func_to_run = 'set_default()'
+        self.x.set(1)
+        self.y.set(1)
+        self.update()
         
     def display1(self):
         global func_to_run
@@ -548,6 +569,33 @@ class TC300_GUI(tk.Frame):
     def go_theta(self):
         global func_to_run
         func_to_run = 'go_theta()'
+        
+    def pause_z(self):
+        global func_to_run
+        if self.pause_z_status == 0:
+            self.button_pause_z.config(text = r'▶️')
+            self.pause_z_status = 1
+            func_to_run = 'pause_z()'
+        elif self.pause_z_status == 1:
+            self.button_pause_z.config(text = r'⏸️')
+            self.pause_z_status = 0
+            func_to_run = 'go_z()'
+        else:
+            pass
+        
+    def pause_theta(self):
+        global func_to_run
+        if self.pause_theta_status == 0:
+            self.button_pause_theta.delete(0, tk.END)
+            self.button_pause_theta.config(text = r'▶️')
+            self.pause_theta_status = 1
+            func_to_run = 'pause_theta()'
+        elif self.pause_theta_status == 1:
+            self.button_pause_theta.config(text = r'⏸️')
+            self.pause_theta_status = 0
+            func_to_run = 'go_theta()'
+        else:
+            pass
         
     def clear_graph(self):
         global cur_index

@@ -328,9 +328,7 @@ class RotStage():
         return status.CurT / 10
 
     def stop(self):
-    
         self.result = lib.command_sstp(self.device_id)
-
 
     def close(self):
         lib.close_device(byref(cast(self.device_id, POINTER(c_int))))
@@ -339,11 +337,10 @@ def main():
     adress = 'ASRL6::INSTR'
     stage = RotStage(adress) 
     #stage.set_zero()
-    stage.set_left_border(-1500)
-    stage.set_right_border(1500)
-    stage.set_speed(10)
-    stage.set_position(10)
+    stage.set_speed(2)
+    stage.set_position(0)
     print(stage.position())
+    stage.close()
         
 if __name__ == '__main__':
     main()

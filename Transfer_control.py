@@ -7,18 +7,14 @@ import pandas as pd
 from csv import writer
 LARGE_FONT = ('Verdana', 12)
 import threading
-import numpy as np
 from datetime import datetime
 import matplotlib.animation as animation
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import re
 import pyvisa as visa
-from pyvisa import constants
 from libximc import *
 import ctypes
 from ctypes import *
-from serial.serialutil import SerialException
 from ZStage import ZStage
 zstage = ZStage()
 from RotStage import RotStage
@@ -39,9 +35,10 @@ def get(device, command):
     return device.query(command)
     #return np.random.random(1) #if want generate random data
 
+if not os.path.exists(os.path.join(cur_dir, 'TC300_config')):
+    os.makedirs(os.path.join(cur_dir, 'TC300_config'))
 
-filename = cur_dir + '\TC300_Config\TC300' + datetime.today().strftime(
-    '%H_%M_%d_%m_%Y') + '.csv'
+filename = os.path.join(cur_dir, 'TC300_config', f'TC300{datetime.today().strftime("%H_%M_%d_%m_%Y")}.csv')
 
 config_parameters = pd.DataFrame(columns=['Time', 'Actual temperature', 'Current CH1', 'Voltage CH1', 'Current CH2', 'Voltage CH2', 'Z position', 'Rotation position'])
 
@@ -62,6 +59,21 @@ I = tc300.PID_I()
 
 D = tc300.PID_D()
 
+op_mode1 = tc300.op_mode1()
+op_mode2 = tc300.op_mode2()
+
+if op_mode1 == 'Heater':
+    pass
+else:
+    tc300.set_op_mode1(0)
+    op_mode1 = 'Heater'
+    
+if op_mode2 == 'Current':
+    pass
+else:
+    tc300.set_op_mode2(2)
+    op_mode2 = 'Current'
+
 cur_index = 0
 
 func_to_run = ''
@@ -69,45 +81,61 @@ func_to_run = ''
 T_init = round(float(tc300.T1()), 2)
 Z_init = round(float(zstage.position()), 2)
 Theta_init = round(float(rotstage.position()), 2)
+T_GUI = None
 
 t0 = 0
+data_tail = 10000
+
+msg_box = None
+
+ch1_on = False
+ch2_on = False
+
+def I_T(T1):
+    if T1 <= 100:
+        I2 = 0
+    elif T1 > 100 and T1 <=110:
+        I2=140
+    elif T1 > 110 and T1 <= 120:
+        I2 = 280
+    elif T1 > 120 and T1 <= 140:
+        I2=350
+    elif T1 > 140 and T1 <= 160:
+        I2=420
+    elif T1 > 160 and T1 <= 180:
+        I2=450
+    elif T1 > 180 and T1 <= 190:
+        I2=480
+    else:
+        I2=500
+    
+    return I2
 
 def set_default():
-    T1 = value = float(globals()['GUI'].entry_target.get())
+    T1 = float(globals()['GUI'].entry_target.get())
     tc300.set_T1(T1)
-    if T1 >= 100 and T1 <=120:
-        I2=200
-        tc300.set_CURR2(I2)
-    if T1 > 120 and T1 <= 140:
-        I2=250
-        tc300.set_CURR2(I2)
-    if T1 > 140 and T1 <= 160:
-        I2=300
-        tc300.set_CURR2(I2)
-    if T1 > 160 and T1 <= 180:
-        I2=360
-        tc300.set_CURR2(I2) 
-    if T1 > 180 and T1 <= 190:
-        I2=385
-        tc300.set_CURR2(I2) 
-    if T1 > 190 and T1 <= 200:
-        I2=430
-        tc300.set_CURR2(I2) 
-    tc300.set_T2(T1)
+    
+    I2 = I_T(T1)
+    
+    tc300.set_CURR2(I2)
+    
     tc300.set_PID_P(value = float(globals()['GUI'].entry_P.get()))
     tc300.set_PID_I(value = float(globals()['GUI'].entry_I.get()))
     tc300.set_PID_D(value = float(globals()['GUI'].entry_D.get()))
     tc300.set_ch1(1)
-    if T1 < 100:
+    if T1 <= 100:
         tc300.set_ch2(0)
     else:
         tc300.set_ch2(1)
 
 def set_target1():
-    if int(globals()['GUI'].modechosen1.current()) == 0:
-        tc300.set_T1(value = float(globals()['GUI'].entry_target1.get()))
-    elif int(globals()['GUI'].modechosen1.current()) == 1:
-        tc300.set_CURR1(value = float(globals()['GUI'].entry_target1.get()))
+    T1 = float(globals()['GUI'].entry_target1.get())
+    mode1 = globals()['GUI'].modechosen1.current()
+    if int(mode1) == 0:
+        tc300.set_T1(value = T1)
+    elif int(mode1) == 1:
+        tc300.set_CURR1(value = T1)
+        
         
 def set_target2():
     if int(globals()['GUI'].modechosen2.current()) == 0:
@@ -116,10 +144,67 @@ def set_target2():
         tc300.set_CURR2(value = float(globals()['GUI'].entry_target2.get()))
 
 def set_ch1():
-    tc300.set_ch1(globals()['GUI'].x.get())
+    global ch1_on
+    global op_mode1
+    global T_GUI
+    if T_GUI:
+        op_mode1 = (int(globals()['GUI'].modechosen1.current()) * 2)
+        if op_mode1 == 0:
+            tc300.set_T1(T_GUI)
+        elif op_mode1 == 2:
+            tc300.set_CURR1(T_GUI)
+        else:
+            raise Exception(f'Incorrect operating mode on CH1: {op_mode1}')
+            
+        op_mode2 = (int(globals()['GUI'].modechosen2.current()) * 2)
+        if int(op_mode2) == 0:
+            tc300.set_T2(value = T_GUI)
+        elif int(op_mode2) == 2:
+            I2 = I_T(T_GUI)
+            tc300.set_CURR2(value = I2)
+            if T_GUI:
+                if T_GUI <= 100:
+                    tc300.set_ch2(0)
+                else:
+                    tc300.set_ch2(1)
+            else:
+                tc300.set_ch2(0)
+        else:
+            raise Exception(f'Incorrect operating mode on CH2: {op_mode2}')
+    
+    status = globals()['GUI'].x.get()
+    try:
+        status = int(status)
+    except ValueError:
+        status = 0
+    ch1_on = bool(status)
+    tc300.set_ch1(status)
+    
+def return_to_default():
+    print('Temperature returns to default')
+    tc300.set_T1(20)
+    time.sleep(1)
+    print('Temperature setpoint = 20')
+    tc300.set_CURR2(0)
+    time.sleep(0.1)
+    print('Current setpoint = 0')
+    tc300.set_ch1(0)
+    time.sleep(0.1)
+    print('CH1 off')
+    tc300.set_ch2(0)
+    time.sleep(0.1)
+    print('CH2 off')
     
 def set_ch2():
-    tc300.set_ch2(globals()['GUI'].y.get())
+    global ch2_on
+    
+    status = globals()['GUI'].y.get()
+    try:
+        status = int(status)
+    except ValueError:
+        status = 0
+    ch2_on = bool(status)
+    tc300.set_ch2(status)
     
 def set_op_mode1():
     tc300.set_op_mode1((int(globals()['GUI'].modechosen1.current()) * 2))
@@ -146,12 +231,14 @@ def my_animate1(i):
     global ax1
     global t0
     global zero_time
+    global data_tail
     
     color = 'darkblue'
 
     columns = pd.read_csv(filename).columns.values
     data = pd.read_csv(filename)
-    data = data.tail(len(data) - globals()['cur_index'])        
+    data = data.tail(len(data) - globals()['cur_index'])     
+    data = data.tail(data_tail)
     t = data[columns[0]].values
     if len(t) == 0:
         t = []
@@ -192,6 +279,19 @@ def my_animate2(i):
     Rot_target = globals()['GUI'].entry_theta.get()
     Z_target = globals()['GUI'].entry_z.get()
     
+    def close(a, b, rtol, atol):
+        c = a - b
+        if c >= 0:
+            pass
+        else:
+            c = - c
+            
+        if b >= 0:
+            pass
+        else:
+            b = - b
+        return c <= (atol + rtol * b)
+    
     try:
         Rot_target = float(Rot_target)
     except ValueError:
@@ -205,7 +305,7 @@ def my_animate2(i):
     if len(z) == 0 or len(theta) == 0:
         color = color1
     else:
-        if np.isclose([Rot_target], theta[len(theta) - 1], rtol = 0.1, atol = 0.1)[0] and np.isclose([Z_target], z[len(z) - 1], rtol = 0.01, atol = 0.01)[0]:
+        if close(Rot_target, theta[len(theta) - 1], rtol = 0.1, atol = 0.1) and close(Z_target, z[len(z) - 1], rtol = 0.01, atol = 0.01):
             color = color2
         else:
             color = color1
@@ -218,8 +318,8 @@ def my_animate2(i):
     ax2.set_ylabel(ylabel, fontsize = 8)
     ax2.tick_params(axis='both', which='major', labelsize=8)
     ax2.set_title(title, fontsize = 8, pad = -5)
-    ax2.set_xlim((-17, 17))
-    ax2.set_ylim((0, 13))
+    ax2.set_xlim((-95, 95))
+    ax2.set_ylim((-1, 13))
     ax2.plot(theta, z, 'o', color = color, lw = 1)
     #globals()['GUI'].update()
     globals()['GUI'].update_idletasks()
@@ -300,8 +400,6 @@ class write_config_parameters(threading.Thread):
                     f_object.close()
                 except KeyboardInterrupt:
                     f_object.close()
-                    
-
 
 class Frontend(tk.Tk):
     
@@ -437,6 +535,9 @@ class TC300_GUI(tk.Frame):
         self.x = tk.IntVar()
         self.y = tk.IntVar()
 
+        self.x.set(0)
+        self.y.set(0)
+
         check_button1 = tk.Checkbutton(self,
                                       text="On",
                                       variable=self.x,
@@ -499,7 +600,7 @@ class TC300_GUI(tk.Frame):
         self.modechosen2['values'] = (' Heater', 
                                   ' Constant Current')
         self.modechosen2.bind("<<ComboboxSelected>>", self.set_op_mode2)
-        self.modechosen2.current(0)
+        self.modechosen2.current(1)
         #self.modechosen2['state'] = 'disabled'
         self.modechosen2.pack()
         self.modechosen2.place(x=760,y=185)
@@ -627,22 +728,27 @@ class TC300_GUI(tk.Frame):
         controller.protocol("WM_DELETE_WINDOW", lambda: self.on_closing(controller))
         
     def on_closing(self, controller):
-        msg_box = tk.messagebox.askquestion('Exit Application', 'Do you want to return to standart condition?',
+        global T_GUI
+        global func_to_run
+        global msg_box
+        msg_box = tk.messagebox.askyesnocancel('Exit Application', 'Do you want to return to standart condition?',
                                         icon='warning')
         
-        if msg_box == 'yes':
+        if msg_box == True:
+            T_GUI = None
+            func_to_run = 'return_to_default()'
             globals()['tc300'].set_T1(20)
             globals()['tc300'].set_ch1(0)
             globals()['tc300'].set_ch2(0)
             globals()['rotstage'].set_position(0)
             globals()['zstage'].set_position(5)
+        elif msg_box == False:
+            pass
+        else:
+            return
         
-        globals()['tc300'].close()
-        globals()['rotstage'].close()
-        globals()['zstage'].close()
         controller.destroy()
-        print('Window closed')
-        sys.exit()
+        print('Window closed')   
         
     def update_item(self, item):
         try:
@@ -654,18 +760,27 @@ class TC300_GUI(tk.Frame):
     
     def click(self):
         global func_to_run
+        global T_GUI
         func_to_run = 'set_default()'
+        
+        T_GUI = float(globals()['GUI'].entry_target.get())
         self.x.set(1)
-        self.y.set(1)
+        if T_GUI > 100:
+            self.y.set(1)
+        else:
+            self.y.set(0)
         self.update()
+        self.entry_target.after(100, self.display1)
         
     def display1(self):
         global func_to_run
         func_to_run = 'set_ch1()'
+        self.entry_target.after(100, self.display1)
             
     def display2(self):
         global func_to_run
         func_to_run = 'set_ch2()'
+        self.entry_target.after(100, self.display2)
         
     def set_op_mode1(self, event):
         global func_to_run
@@ -694,7 +809,7 @@ class TC300_GUI(tk.Frame):
     def clockwise(self):
         theta = float(self.entry_theta.get())
         delta = float(self.entry_delta_theta.get())
-        if (theta >= -15 + delta and theta <= 15 - delta) or theta - (-15) <= delta:
+        if (theta >= -90 + delta and theta <= 90 - delta) or theta - (-90) <= delta:
             self.entry_theta.delete(0, tk.END)
             self.entry_theta.insert(0, theta - delta)
             self.go_theta()
@@ -702,7 +817,7 @@ class TC300_GUI(tk.Frame):
     def counter_clockwise(self):
         theta = float(self.entry_theta.get())
         delta = float(self.entry_delta_theta.get())
-        if (theta >= -15 + delta and theta <= 15 - delta) or theta - (-15) <= delta:
+        if (theta >= -90 + delta and theta <= 90 - delta) or theta - (-90) <= delta:
             self.entry_theta.delete(0, tk.END)
             self.entry_theta.insert(0, theta + delta)
             self.go_theta()
@@ -718,8 +833,8 @@ class TC300_GUI(tk.Frame):
     def go_theta(self):
         global func_to_run
         cur_theta = float(self.entry_theta.get())
-        if cur_theta > 15 or cur_theta < -15:
-            tk.messagebox.showwarning('Invalid borders warning', f'Inserted value is {cur_theta}, borders are [-15, 15]')
+        if cur_theta > 90 or cur_theta < -90:
+            tk.messagebox.showwarning('Invalid borders warning', f'Inserted value is {cur_theta}, borders are [-90, 90]')
         else:
             func_to_run = 'go_theta()'
         
@@ -779,9 +894,25 @@ def main():
     ani2 = animation.FuncAnimation(
         fig = fig2, func = lambda x: my_animate2(x), interval=interval, blit = False)
     app.mainloop()
+    
+    time.sleep(1)
+    
+    if msg_box:
+        return_to_default()
+    try:
+        globals()['tc300'].close()
+    except:
+        pass
+    finally:
+        globals()['rotstage'].close()
+        globals()['zstage'].close()
+        
+    sys.exit()
+    
     while True:
         pass
 
 
 if __name__ == '__main__':
     main()
+    

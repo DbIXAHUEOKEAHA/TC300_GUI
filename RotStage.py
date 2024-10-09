@@ -25,8 +25,8 @@ class RotStage():
         self.set_options = ['position', 'shift']
         self.get_options = ['position', 'I_pwr', 'U_pwr', 'T_proc']
     
-        self.left_border = -1500
-        self.right_border = 1500
+        self.left_border = -9000
+        self.right_border = 9000
         self.fasthome = 100
         self.slowhome = 10
         self.homedelta = -1250
@@ -337,7 +337,7 @@ def main():
     adress = 'ASRL6::INSTR'
     stage = RotStage(adress) 
     #stage.set_zero()
-    stage.set_speed(2)
+    stage.set_speed(1)
     stage.set_position(0)
     print(stage.position())
     stage.close()

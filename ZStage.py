@@ -99,6 +99,7 @@ class ZStage():
         move_settings.Decel = self.decel
         move_settings.AntiplaySpeed = 1000
         move_settings.uAntiplaySpeed = 0
+        
         class MoveFlags_:
             RPM_DIV_1000 = 1
 
@@ -124,7 +125,7 @@ class ZStage():
             ENGINE_CURRENT_AS_RMS = 2
             ENGINE_REVERSE = 1
         engine_settings.EngineFlags = EngineFlags_.ENGINE_LIMIT_RPM | EngineFlags_.ENGINE_ACCEL_ON | EngineFlags_.ENGINE_REVERSE
-        engine_settings.Antiplay = 575
+        #engine_settings.Antiplay = 575
         class MicrostepMode_:
             MICROSTEP_MODE_FRAC_256 = 9
             MICROSTEP_MODE_FRAC_128 = 8
@@ -136,7 +137,7 @@ class ZStage():
             MICROSTEP_MODE_FRAC_2 = 2
             MICROSTEP_MODE_FULL = 1
         engine_settings.MicrostepMode = MicrostepMode_.MICROSTEP_MODE_FRAC_256
-        engine_settings.StepsPerRev = 200
+        engine_settings.StepsPerRev = 65535
         result = lib.set_engine_settings(id, byref(engine_settings))
 
         if result != Result.Ok:
@@ -337,10 +338,10 @@ class ZStage():
 def main():
     adress = 'ASRL5::INSTR'
     stage = ZStage(adress) 
-    #stage.set_position(0)
-    stage.set_left_border(0.01)
+    stage.set_position(0)
+    #stage.set_left_border(0.01)
     print(stage.position())
-    stage.set_zero()
+    #stage.set_zero()
         
 
 if __name__ == '__main__':

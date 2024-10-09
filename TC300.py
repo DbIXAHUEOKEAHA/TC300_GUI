@@ -12,6 +12,8 @@ def get(device, command):
     return device.query(command)
     #return np.random.random(1) #if want generate random data
 
+print('TC300 initialized')
+
 class TC300():
 
     def __init__(self, adress='ASRL4::INSTR'):
@@ -252,12 +254,12 @@ class TC300():
     
     def set_op_mode1(self, value):
         time.sleep(0.1)
-        #Set CH1 operation mode
+        #Set CH1 operation mode, 0 - heater, 2 - current
         self.tc.write('MOD1=' + str(value))
     
     def set_op_mode2(self, value):
         time.sleep(0.1)
-        #Set CH2 operation mode
+        #Set CH2 operation mode, 0 - heater, 2 - current
         self.tc.write('MOD2=' + str(value))
     
     def close(self):
@@ -265,9 +267,12 @@ class TC300():
         
 def main():
     tc300 = TC300()
-    tc300.tc.write('TSET1=200')
-    time.sleep(0.1)
-    tc300.tc.write('TSET1=100')
-    
+    try:
+        print(tc300.op_mode2())
+        tc300.set_op_mode1(0)
+    except Exception as ex:
+        print(ex)
+    finally:
+        tc300.close()
 if __name__ == '__main__':
     main()

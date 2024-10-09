@@ -13,7 +13,7 @@ executables = [cx_Freeze.Executable(py_name, base=base, targetName=exe_name, ico
 
 cx_Freeze.setup(
    name=exe_name,
-   options={"build_exe": {"packages": ["tkinter", "os", "time", "pandas", "csv", "matplotlib", "matplotlib.animation", "threading", "datetime", "pyvisa"], "includes": ["TC300", "RotStage", "ZStage"], 
+   options={"build_exe": {"packages": ["tkinter", "os", "time", "pandas", "csv", "matplotlib", "matplotlib.animation", "threading", "datetime", "pyvisa", "libximc"], "includes": ["TC300", "RotStage", "ZStage"], 
                           "include_files": ["TC300.py", "RotStage.py", "ZStage.py", "logo.png"]}},
    version="1.0",
    description="GUI to control IFIM Transfer station",

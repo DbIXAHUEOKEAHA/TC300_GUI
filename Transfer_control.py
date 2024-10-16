@@ -22,11 +22,35 @@ rotstage = RotStage()
 from TC300 import TC300
 tc300 = TC300()
 import sys
+from KST201 import KST201
+from msl.equipment import (
+    EquipmentRecord,
+    ConnectionRecord,
+    Backend)
+from msl.equipment.resources.thorlabs import MotionControl
 
 ctypes.windll.kernel32.SetDllDirectoryW(None)
 
 rm = visa.ResourceManager()
 
+# ensure that the Kinesis folder is available on PATH
+os.environ['PATH'] += os.pathsep + 'C:/Program Files/Thorlabs/Kinesis'
+
+ser = '26005717'
+
+record = EquipmentRecord(
+    manufacturer='Thorlabs',
+    model='KST101', #also support KST201, no need to change 
+    serial=ser,  # update for your device
+    connection=ConnectionRecord(
+        backend=Backend.MSL,
+        address='SDK::Thorlabs.MotionControl.KCube.StepperMotor.dll',
+    ),
+)
+
+MotionControl.build_device_list()
+
+kst201 = KST201(record)
 
 # Write command to a device and get it's output
 def get(device, command):
@@ -644,10 +668,10 @@ class TC300_GUI(tk.Frame):
         self.entry_z.insert(0, str(Z_init))
         self.entry_z.place(x = 100, y = 400)
         
-        button_arrow_up = tk.Button(self, text = r'🔼', command = self.arrow_up, font = ('verdana', 5), width = 2)
-        button_arrow_up.place(x = 210, y = 395)
+        button_arrow_up = tk.Button(self, text = r'🔼', command = self.arrow_up, font = ('verdana', 6), width = 2)
+        button_arrow_up.place(x = 210, y = 392)
         
-        button_arrow_down = tk.Button(self, text = r'🔽', command = self.arrow_down, font = ('verdana', 5), width = 2)
+        button_arrow_down = tk.Button(self, text = r'🔽', command = self.arrow_down, font = ('verdana', 6), width = 2)
         button_arrow_down.place(x = 210, y = 410)
         
         label_delta_z = tk.Label(self, text = r'Δ, mm', font = ('verdana', 14))
@@ -669,10 +693,10 @@ class TC300_GUI(tk.Frame):
         self.entry_theta.insert(0, str(Theta_init))
         self.entry_theta.place(x = 500, y = 400)
         
-        button_counter_clockwise = tk.Button(self, text = r'🔃', command = self.counter_clockwise, font = ('verdana', 5), width = 2)
-        button_counter_clockwise.place(x = 610, y = 395)
+        button_counter_clockwise = tk.Button(self, text = r'🔃', command = self.counter_clockwise, font = ('verdana', 6), width = 2)
+        button_counter_clockwise.place(x = 610, y = 392)
         
-        button_clockwise = tk.Button(self, text = r'🔄', command = self.clockwise, font = ('verdana', 5), width = 2)
+        button_clockwise = tk.Button(self, text = r'🔄', command = self.clockwise, font = ('verdana', 6), width = 2)
         button_clockwise.place(x = 610, y = 410)
         
         label_delta_theta = tk.Label(self, text = r'Δ, deg', font = ('verdana', 14))
@@ -690,10 +714,35 @@ class TC300_GUI(tk.Frame):
         
         self.pause_theta_status = 0
         
+        label_Z_arm = tk.Label(self, text = r'Z arm (um)', font = ('verdana', 16))
+        label_Z_arm.place(x = 100, y = 585)
+        
+        self.button_x0p1 = tk.Button(self, text = r'x0.1', command = lambda: self.set_velocity(0.0001), font = ('verdana', 14), width = 5)
+        self.button_x0p1.place(x = 100, y = 625)
+        
+        self.button_x1 = tk.Button(self, text = r'x1', command = lambda: self.set_velocity(0.001), font = ('verdana', 14), width = 5)
+        self.button_x1.place(x = 175, y = 625)
+        
+        self.button_x100 = tk.Button(self, text = r'x100', command = lambda: self.set_velocity(0.1), font = ('verdana', 14), width = 5)
+        self.button_x100.place(x = 250, y = 625)
+        
+        self.button_x1000 = tk.Button(self, text = r'x1000', command = lambda: self.set_velocity(1), font = ('verdana', 14), width = 5)
+        self.button_x1000.place(x = 325, y = 625)
+        
+        button_arm_up = tk.Button(self, text = r'🔼', command = self.set_arm_up, font = ('verdana', 8), width = 2)
+        button_arm_up.place(x = 400, y = 620)
+        
+        button_arm_down = tk.Button(self, text = r'🔽', command = self.set_arm_down, font = ('verdana', 8), width = 2)
+        button_arm_down.place(x = 400, y = 645)
+        
+        self.set_velocity(0.1)
+        
+        self.current_velocity = 0.1
+        
         self.columns = pd.read_csv(filename, sep = ',').columns
         
         self.table_dataframe = ttk.Treeview(self, columns = self.columns, show = 'headings', height = 1)
-        self.table_dataframe.place(x = 20, y = 650, width = 8 * 120 + 2)
+        self.table_dataframe.place(x = 20, y = 800, width = 8 * 120 + 2)
 
         self.initial_value = []
         
@@ -828,7 +877,7 @@ class TC300_GUI(tk.Frame):
         if cur_z < 0 or cur_z > 10.6:
             tk.messagebox.showwarning('Invalid borders warning', f'Inserted value is {cur_z}, borders are [0, 10.6]')
         else:
-            func_to_run = 'go_z()'
+            globals()['go_z']()
         
     def go_theta(self):
         global func_to_run
@@ -836,7 +885,30 @@ class TC300_GUI(tk.Frame):
         if cur_theta > 90 or cur_theta < -90:
             tk.messagebox.showwarning('Invalid borders warning', f'Inserted value is {cur_theta}, borders are [-90, 90]')
         else:
-            func_to_run = 'go_theta()'
+            globals()['go_theta']()
+        
+    def set_velocity(self, value):
+        global kst201
+        
+        kst201.set_persistent_velocity(value)
+        
+        values_dict = {0.0001: '0p1', 0.001: '1', 0.1: '100', 1: '1000'}
+        
+        for i in list(values_dict.values()):
+            getattr(self, f'button_x{i}').config(bg = '#f0f0f0')
+            
+        getattr(self, f'button_x{values_dict[value]}').config(bg = 'darkgrey')
+        self.current_velocity = value
+        
+    def set_arm_up(self):
+        global kst201
+        
+        kst201.shift_up(self.current_velocity)
+        
+    def set_arm_down(self):
+        global kst201
+        
+        kst201.shift_down(self.current_velocity)
         
     def set_target1(self):
         global func_to_run
@@ -851,11 +923,11 @@ class TC300_GUI(tk.Frame):
         if self.pause_z_status == 0:
             self.button_pause_z.config(text = r'▶️')
             self.pause_z_status = 1
-            func_to_run = 'pause_z()'
+            globals()['pause_z']()
         elif self.pause_z_status == 1:
             self.button_pause_z.config(text = r'⏸️')
             self.pause_z_status = 0
-            func_to_run = 'go_z()'
+            globals()['go_z']()
         else:
             pass
         
@@ -865,11 +937,11 @@ class TC300_GUI(tk.Frame):
             self.button_pause_theta.delete(0, tk.END)
             self.button_pause_theta.config(text = r'▶️')
             self.pause_theta_status = 1
-            func_to_run = 'pause_theta()'
+            globals()['pause_theta']()
         elif self.pause_theta_status == 1:
             self.button_pause_theta.config(text = r'⏸️')
             self.pause_theta_status = 0
-            func_to_run = 'go_theta()'
+            globals()['go_theta']()
         else:
             pass
         
@@ -906,6 +978,7 @@ def main():
     finally:
         globals()['rotstage'].close()
         globals()['zstage'].close()
+        globals()['kst201'].close()
         
     sys.exit()
     
